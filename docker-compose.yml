@@ -1,0 +1,145 @@
+volumes:
+  dev_redis_data:
+  dev_rabbitmq3x_data:
+  dev_pgsql_data:
+    
+services:
+  dev-mailcatcher-service:
+    image: sj26/mailcatcher
+    container_name: dev-mailcatcher
+    ports:
+      - "${DEV_MAILCATCHER_PORT}:1025"
+      - "${DEV_MAILCATCHER_WEB_PORT}:1080"
+    environment:
+      TZ: ${TZ}
+    networks:
+      macos-network:
+        ipv4_address: ${DEV_MAILCATCHER_HOST}
+        
+  dev-redis-service:
+    image: redis:latest
+    container_name: dev-redis
+    hostname: dev-redis
+    ports:
+      - "${DEV_REDIS_PORT}:6379"
+    volumes:
+      - dev_redis_data:/data
+    environment:
+      TZ: ${TZ}
+    networks:
+      macos-network:
+        ipv4_address: ${DEV_REDIS_HOST}
+
+  dev-rabbitmq3x-service:
+    build: ./containers/rabbitmq3x
+    container_name: dev-rabbitmq3x
+    hostname: dev-rabbitmq3x
+    restart: always
+    ports:
+      - "${DEV_RABBITMQ3X_PORT}:5672"
+      - "${DEV_RABBITMQ3X_WEB_PORT}:15672"
+    volumes:
+      #- /etc/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - dev_rabbitmq3x_data:/var/lib/rabbitmq:rw
+    environment:
+      RABBITMQ_DEFAULT_USER: ${DEV_RABBITMQ3X_USER}
+      RABBITMQ_DEFAULT_PASS: ${DEV_RABBITMQ3X_PASS}
+      RABBITMQ_DEFAULT_VHOST: ${DEV_RABBITMQ3X_VHOST}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit log_levels [{connection,error},{default,error}] disk_free_limit 2147483648
+      TZ: ${TZ}
+    networks:
+      macos-network:
+        ipv4_address: ${DEV_RABBITMQ3X_HOST}
+        
+  dev-pgsql-service:
+    image: postgres:latest
+    container_name: dev-pgsql
+    restart: always
+    environment:
+      TZ: ${TZ}
+      PGTZ: ${TZ}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Qwertyu1
+    volumes:
+      - "dev_pgsql_data:/var/lib/postgresql/data"
+    ports:
+      - 5432:5432
+    networks:
+      macos-network:
+        ipv4_address: ${DEV_PGSQL_HOST}
+        
+  dev-php74-service:
+    build: ./containers/php74
+    container_name: dev-php74
+    restart: always
+    volumes:
+      - "./www:/var/www"
+      - "./nginx/log:/var/log/nginx"
+    extra_hosts:
+      - "dev-nginx-host:${DEV_NGINX_HOST}"
+      - "dev-php74-host:${DEV_PHP74_HOST}"
+      - "dev-php83-host:${DEV_PHP83_HOST}"
+      - "dev-mailcatcher-host:${DEV_MAILCATCHER_HOST}"
+      - "dev-redis-host:${DEV_REDIS_HOST}"
+      - "dev-rabbitmq-host:${DEV_RABBITMQ3X_HOST}"
+      - "dev-pgsql-host:${DEV_PGSQL_HOST}"     
+    links:
+      - dev-mailcatcher-service
+      - dev-redis-service
+      - dev-rabbitmq3x-service
+      - dev-pgsql-service
+    networks:
+      macos-network:
+        ipv4_address: ${DEV_PHP74_HOST} 
+        
+  dev-php83-service:
+    build: ./containers/php83
+    container_name: dev-php83
+    restart: always
+    volumes:
+      - "./www:/var/www"
+      - "./nginx/log:/var/log/nginx"
+    extra_hosts:
+      - "dev-nginx-host:${DEV_NGINX_HOST}"
+      - "dev-php74-host:${DEV_PHP74_HOST}"
+      - "dev-php83-host:${DEV_PHP83_HOST}"
+      - "dev-mailcatcher-host:${DEV_MAILCATCHER_HOST}"
+      - "dev-redis-host:${DEV_REDIS_HOST}"
+      - "dev-rabbitmq-host:${DEV_RABBITMQ3X_HOST}"
+      - "dev-pgsql-host:${DEV_PGSQL_HOST}"      
+    links:
+      - dev-mailcatcher-service
+      - dev-redis-service
+      - dev-rabbitmq3x-service
+      - dev-pgsql-service
+    networks:
+      macos-network:
+        ipv4_address: ${DEV_PHP83_HOST}   
+        
+  dev-nginx-service:
+    image: nginx:latest
+    container_name: dev-nginx
+    restart: always
+    volumes:
+      - "./www:/var/www"
+      - "./nginx/log:/var/log/nginx"
+      - "./nginx/laravel-11-demo.conf:/etc/nginx/conf.d/laravel-11-demo.conf"
+      - "./nginx/default.conf:/etc/nginx/conf.d/default.conf"
+      - "./nginx/default_php74.conf:/etc/nginx/conf.d/default_php74.conf"
+      - "./nginx/default_php83.conf:/etc/nginx/conf.d/default_php83.conf"
+    ports:
+      - 8074:8074
+      - 8083:8083
+      - 80:80
+      - 8183:8183
+    links:
+      - dev-php74-service
+      - dev-php83-service
+    networks:
+      macos-network:
+        ipv4_address: ${DEV_NGINX_HOST}      
+
+        
+networks:
+  macos-network:
+    external: true        
