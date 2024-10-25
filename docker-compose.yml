@@ -39,7 +39,7 @@ services:
       - "${DEV_RABBITMQ3X_PORT}:5672"
       - "${DEV_RABBITMQ3X_WEB_PORT}:15672"
     volumes:
-      #- /etc/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./containers/rabbitmq3x/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
       - dev_rabbitmq3x_data:/var/lib/rabbitmq:rw
     environment:
       RABBITMQ_DEFAULT_USER: ${DEV_RABBITMQ3X_USER}
